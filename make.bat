@@ -1,10 +1,10 @@
 
 @rem BUILD THE DISK'S DIRECTORY TREE STRUCTURE
-@mkdir tree>>nul
+@mkdir tree 2>nul
 @cd tree
-@mkdir efi>>nul
+@mkdir efi 2>nul
 @cd efi
-@mkdir boot>>nul
+@mkdir boot 2>nul
 @cd ..\..
 
 @rem BUILD SOURCE FILES
