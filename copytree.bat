@@ -1,0 +1,2 @@
+@rem COPY TREE STRUCTURE TO VHD MOUNTED AT DRIVE LETTER L:\
+@xcopy /E /I /Y tree\* L:\
