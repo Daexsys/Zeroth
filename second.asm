@@ -1,6 +1,8 @@
 
 %define fix define
 
+%define _kernelSegment 0x3000
+
 org 0
 
 signature:
@@ -8,11 +10,12 @@ signature:
 
 start:
     mov ax, cs
-    ;mov ax, 0x2000
     mov ds, ax
     mov es, ax
     mov fs, ax
     mov gs, ax
+    
+    mov byte [bootdrive], dl
 
     mov si, strings.systeminfo
     call printString
@@ -62,11 +65,14 @@ getCpuFeatures:
         jmp $-2
     
 getFloppyGeometry:
+
+    push es
     xor ax, ax
     mov es, ax
     mov di, ax
     mov ah, 0x08
     int 0x13
+    pop es
     
     mov byte [geometry.heads], dh
     push cx
@@ -121,8 +127,6 @@ getMemoryMap:
     mov si, strings.memorymap
     call printString
     
-    push ds
-    pop es
     mov di, eof
     xor ebx, ebx
     mov edx, _smap
@@ -145,8 +149,6 @@ getMemoryMap:
     jmp .start
     
     .nextEntry:
-        push ds
-        pop es
         mov eax, 0xE820
         mov [es:di + 20], dword 1
         mov ecx, 24
@@ -318,8 +320,42 @@ getMemoryMap:
         dec cx
         jnz .buildTable
     
-    mov si, strings.newline
+loadKernelFile:
+    mov si, strings.krnlload
     call printString
+    
+    mov ah, 0x02
+    mov al, 1
+    mov ch, 0
+    mov cl, 10
+    mov dh, 0
+    mov dl, byte [bootdrive]
+    push _kernelSegment
+    pop es
+    xor bx, bx
+    int 0x13
+    
+    jnc @f
+    mov si, strings.krnleload
+    call printString
+    cli
+    hlt
+    jmp $-2
+    
+    @@:
+    cmp word [es:bx], 0x05E9
+    je @f
+    mov si, strings.krnlesign
+    call printString
+    cli
+    hlt
+    jmp $-2
+    
+    @@:
+    
+    ;;
+    jmp _kernelSegment:2
+    ;;
     
     cli
     hlt
@@ -488,9 +524,13 @@ strings:
     .mmaperr2   db 0x0D, 0x0A, "   ""EAX did not return 0x0534D4150 as expected""", 0
     .mmaperr3   db 0x0D, 0x0A, "   ""Only one map entry was returned""", 0
     .mmaperru   db 0x0D, 0x0A, "   ""Unknown errorcode""", 0
+    .krnlload   db 0x0D, 0x0A, "Loading kernel file into memory...", 0
+    .krnleload  db 0x0D, 0x0A, "***Error loading kernel file. Cannot continue.", 0
+    .krnlesign  db 0x0D, 0x0A, "***File signature does not match. Cannot continue.", 0
     .loadhalt   db 0x0D, 0x0A, "***Cannot continue loading operating system.", 0
     .buffer     db 6 dup (0)
 
+bootdrive:      db ?
 geometry:
     .cylinders  dw ?
     .sectors    db ?

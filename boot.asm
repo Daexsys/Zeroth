@@ -1,7 +1,7 @@
 
 %define fix define
 
-%define _loaderSector 0x2000
+%define _loaderSegment 0x2000
 
 org 0x7C00
 
@@ -21,6 +21,7 @@ start:
     
     ; More environment initialization
     cld
+    mov byte [bootdrive], dl
     
     ; Load second stage loader from diskette using BIOS services.
     ; This OS is meant to be booted from a CD with floppy virtualization,
@@ -29,11 +30,11 @@ start:
     call printString
     
     mov ah, 0x02
-    mov al, 3
+    mov al, 4
     mov ch, 0
     mov cl, 2
     mov dh, 0
-    push _loaderSector
+    push _loaderSegment
     pop es
     xor bx, bx
     int 0x13
@@ -49,7 +50,8 @@ start:
     @@:
     
     ; Start executing second loader
-    jmp _loaderSector:2
+    mov dl, byte [bootdrive]
+    jmp _loaderSegment:2
     
     cli
     hlt
@@ -74,6 +76,8 @@ printString:
     
 hello: db 0x0D, 0x0A, "Loading second stage loader...", 0
 err_:  db 0x0D, 0x0A, "***Error loading second stage loader.", 0
+
+bootdrive:  db ?
 
 times 510-($-$$) nop
 dw 0xAA55
